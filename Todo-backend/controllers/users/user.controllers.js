@@ -11,7 +11,7 @@ import { sendOTPEmail } from "../../config/otpMail.js";
 
 //!signup controller here
 export const signup = asyncHandler(async (req, res, next) => {
-  const { email, username, password, phone, profilePicture } = req.body;
+  const { email, username, password, phone, } = req.body;
 
   // Check if user already exists
   const existingUser = await User.findOne({
@@ -24,6 +24,9 @@ export const signup = asyncHandler(async (req, res, next) => {
       message: "User already exists",
     });
   }
+
+  // Check if image is uploaded
+  const profilePicture = req.file ? req.file.path : null;
 
   //  Create new user
   const newUser = new User({
@@ -142,9 +145,11 @@ export const getProfile = asyncHandler(async (req, res, next) => {
 //   });
 // });
 
-//@desc   see all task
-//@route  GET /api/v1/users/get-all-tasks
-//@access privet
+
+
+// @desc   see all task
+// @route  GET /api/v1/users/get-all-tasks
+// @access privet
 
 export const getAllTasks = asyncHandler(async (req, res, next) => {
   const user = req.userAuth;
@@ -164,22 +169,100 @@ export const getAllTasks = asyncHandler(async (req, res, next) => {
 
 //send otp via mail
 //@desc   send otp for forgot password
-//@route  GET /api/v1/users/forgot-password
+//@route  POST /api/v1/users/otp-send
+//@access Public
+
+
+export const sendOTP = asyncHandler(
+  async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email required" });
+    }
+
+    const generateOTP = () => Math.floor(100000 + Math.random() * 900000);
+    const otp = generateOTP();
+    const otpExpires = Date.now() + 5 * 60 * 1000; // 5 min
+
+    //  ek hi query me find + update
+    const user = await User.findOneAndUpdate(
+      { email }, // find condition
+      { otp, otpExpires }, // update fields
+      { new: true } // updated document return kare
+    );
+
+    // agar user nahi mila to error
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Email bhejna
+    await sendOTPEmail(email, otp);
+
+    return res.status(200).json({
+      message: "OTP sent successfully",
+    });
+  
+}
+);
+
+
+//verify otp
+//@desc   send otp for forgot password
+//@route  POST/api/v1/users/verify-otp
+//@access Public
+
+export const verifyOtp = asyncHandler(async(req,res)=>{
+   const {otp,email} = req.body;
+   if (!otp || !email) {
+    return res.status(400).json({ message: "Email and Otp both are required" });
+   }
+   const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "user not found" });
+    }
+    console.log(otp);
+    console.log(user?.otp);
+    if(otp !== user?.otp){
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+     if (user.otpExpires && user.otpExpires < Date.now()) {
+    return res.status(400).json({ message: "OTP expired" });
+  }
+  user.otp = undefined;
+  user.otpExpires = undefined;
+  await user.save();
+
+  return res.status(200).json({ message: "OTP verified successfully",token: genrateToken(user), });
+})
+
+//reset password
+//@desc   send otp for forgot password
+//@route  POST/api/v1/users/reset-password
 //@access privet
 
-//! idhar se kam karna hai..
-export const sendOTP = async (req, res) => {
-  const generateOTP = () => Math.floor(100000 + Math.random() * 900000);
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ message: "Email required" });
+export const resetPassword= asyncHandler(async(req,res)=>{
+  const user = req.userAuth;
+const userId = user?._id;
+const { password } = req.body;
 
-  const otp = generateOTP();
+if (!userId) {
+  return res.status(400).json({ message: "Invalid user" });
+}
 
-  try {
-    await sendOTPEmail(email, otp);
-    // OTP ko DB ya in-memory store me save kar sakte ho expiry ke saath
-    res.status(200).json({ success: true, message: "OTP sent successfully!" });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+// hash password
+const salt = await bcrypt.genSalt(10);
+const hashedPassword = await bcrypt.hash(password, salt);
+
+// update user password
+const updatedUser = await User.findByIdAndUpdate(
+  userId,
+  { password: hashedPassword },
+  { new: true }
+);
+
+return res.status(200).json({ message: "Password reset successfully",  });
+});
+
+

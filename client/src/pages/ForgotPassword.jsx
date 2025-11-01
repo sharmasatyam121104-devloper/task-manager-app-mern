@@ -14,6 +14,7 @@ const ForgotPassword = () => {
       setOtpSent(true);
     } else {
       // OTP verify logic
+      console.log("Sending OTP to:", email);
       console.log("Verifying OTP:", otp);
     }
   };
