@@ -42,6 +42,27 @@ export const getAllTasks = createAsyncThunk(
   }
 );
 
+//get-profilr details
+
+import { getProfileAPI } from "./userApi";
+
+export const getUserProfile = createAsyncThunk(
+  "user/getProfile",
+  async (_, thunkAPI) => {
+    try {
+      const state = thunkAPI.getState();
+     const token = JSON.parse(localStorage.getItem("user")); // token string
+     
+      return await getProfileAPI(token);
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data || { message: "Failed to fetch profile" }
+      );
+    }
+  }
+);
+
+
 const userFromStorage = JSON.parse(localStorage.getItem("user"));
 
 // Slice
@@ -49,10 +70,12 @@ const userSlice = createSlice({
   name: "user",
   initialState: {
     user: userFromStorage || null,
+    profile:null,
     loading: false,
     error: null,
     todo:null,
     isAuthenticated:false,
+    getProfile:false
   },
   reducers: {
     logout: (state) => {
@@ -111,7 +134,22 @@ const userSlice = createSlice({
     .addCase(getAllTasks.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload?.message || "Failed to fetch tasks";
-    });
+    })
+     .addCase(getUserProfile.pending, (state) => {
+       state.loading = true;
+       state.error = null;
+     })
+     .addCase(getUserProfile.fulfilled, (state, action) => {
+       state.loading = false;
+       state.profile = action.payload;  // ✅ profile data store ho gaya
+       state.getProfile = true;
+     })
+     .addCase(getUserProfile.rejected, (state, action) => {
+       state.loading = false;
+       state.error = action.payload?.message || "Failed to fetch profile";
+       state.getProfile = false;
+     });
+
   },
 });
 

@@ -18,6 +18,9 @@ app.use(cors({
   credentials: true,
 }));
 
+app.use("/uploads", express.static("uploads"));
+
+
 //!load th enviornment variables
 dotenv.config();
 

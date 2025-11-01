@@ -19,7 +19,7 @@ const Register = () => {
    username:"",
    password:"",
    phone:"",
-   image:null
+   profilePicture:null
   });
    
 
@@ -38,7 +38,7 @@ const Register = () => {
     if (e.target.files && e.target.files[0]) {
       setFormData((prev) => ({
         ...prev,
-        image: e.target.files[0],
+        profilePicture: e.target.files[0],
       }));
       setPreview(URL.createObjectURL(e.target.files[0]));
     }
@@ -155,10 +155,10 @@ const Register = () => {
             </label>
             <input
               type="file"
-              id="image"
+              id="profilePicture"
               accept="image/*"
               onChange={handleImageChange}
-              name="image"
+              name="profilePicture"
              
               className="w-full  h-10 border text-center  border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
